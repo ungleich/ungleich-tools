@@ -1,0 +1,11 @@
+#!/bin/sh
+
+fname=/tmp/monkey
+
+ceph-authtool --create-keyring "$fname" --gen-key -n mon.
+ceph-authtool "$fname" --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
+
+cat "$fname"
+
+# ensure mon has persistent storage!
+ceph-mon --mkfs -i mon.$(hostname)  --keyring /tmp/monkey
