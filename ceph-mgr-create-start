@@ -18,3 +18,5 @@ ceph auth get-or-create mgr.$name \
      mon 'allow profile mgr' \
      osd 'allow *' \
      mds 'allow *' > "$MGR_PATH/keyring"
+
+/etc/init.d/ceph start mgr.$name
