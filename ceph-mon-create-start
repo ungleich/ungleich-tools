@@ -7,6 +7,7 @@ fi
 
 fname=$1
 
-ceph-mon --mkfs -i $(hostname) --keyring "$fname"
 ceph-mon --mkfs -i $(hostname) --keyring "$fname"  --setuser ceph --setgroup ceph
 touch /var/lib/ceph/mon/ceph-$(hostname)/sysvinit
+
+/etc/init.d/ceph start mon.$(hostname)

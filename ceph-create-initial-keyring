@@ -2,13 +2,12 @@
 
 # Creates the initial keys
 
-fname=/tmp/monkey
+if [ $# -ne 1 ]; then
+    echo "$0 initial-key-file"
+    exit 1
+fi
+
+fname=$1
 
 ceph-authtool --create-keyring "$fname" --gen-key -n mon.
 ceph-authtool "$fname" --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
-
-cat "$fname"
-
-# ensure mon has persistent storage!
-ceph-mon --mkfs -i $(hostname)  --keyring /tmp/monkey
-touch /var/lib/ceph/mon/ceph-server3/
