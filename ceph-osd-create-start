@@ -1,0 +1,92 @@
+#!/bin/sh
+# 17:19, 2018-02-09
+# Nico Schottelius
+
+# Based on ceph-disk -v prepare --bluestore /dev/sdc --osd-id ${ID} --osd-uuid $(uuidgen) --crush-device-class "ssd"
+
+# Create:
+# - block       -> link to partuuid
+# - block_uuid -e> uuid if the block
+# - ceph_fsid   -> get from ceph-conf
+# crush_device_class -> ssd, hdd
+# fsid          -> uuidgen!
+# magic         -> string "ceph osd volume v026"
+# type          -> bluestore
+
+fsid=$(ceph-conf --cluster=ceph --name=osd. --lookup fsid)
+fs_uuid=$(uuidgen)
+magic="ceph osd volume v026"
+
+set -x
+set -e
+
+if [ $# -ne 3 ]; then
+    echo "$0 disk class osdweight"
+    echo "class = hdd or ssd"
+    exit 1
+fi
+
+export DEV=$1;shift
+export CLASS=$1; shift
+export WEIGHT=$1; shift
+
+uuid_metadata=$(uuidgen)
+uuid_block=$(uuidgen)
+
+osd_id=$(ceph osd create)
+
+dev_metadata="/dev/disk/by-partuuid/$uuid_metadata"
+dev_block="/dev/disk/by-partuuid/$uuid_block"
+
+/sbin/sgdisk --new=0:0:+100M --change-name="0:ceph data" \
+             --partition-guid="0:$uuid_metadata" \
+             --typecode=0:4fbd7e29-9d25-41b8-afd0-062c0ceff05d \
+             --mbrtogpt -- $DEV
+
+/sbin/udevadm settle --timeout=600
+
+
+# Using gdisk --largest-new does not change the name or set guid;
+# So use 2 steps instead
+/sbin/sgdisk --largest-new=0 --mbrtogpt -- $DEV
+/sbin/udevadm settle --timeout=600
+
+lastpart=$(gdisk -l $DEV | tail -n1 | awk '{ print $1 }')
+/sbin/sgdisk --change-name="${lastpart}:ceph block" \
+             --partition-guid="${lastpart}:$uuid_block" \
+             --typecode="${lastpart}:cafecafe-9b03-4f30-b4c6-b4b80ceff106" \
+             --mbrtogpt -- $DEV
+/sbin/udevadm settle --timeout=600
+
+
+/sbin/mkfs -t xfs -f -i size=2048 -- "$dev_metadata"
+
+mountpath=/var/lib/ceph/osd/ceph-${osd_id}
+
+mkdir -p "$mountpath"
+mount "$dev_metadata" "$mountpath"
+
+ln -s $dev_block        "$mountpath/block"
+
+echo "$uuid_block"    > "$mountpath/block_uuid"
+echo "$fsid"          > "$mountpath/ceph_fsid"
+echo "$magic"         > "$mountpath/magic"
+echo "$CLASS"         > "$mountpath/crush_device_class"
+
+# Important, otherwise --mkfs later will try to create filestore
+echo bluestore        > "$mountpath/type"
+
+ceph auth get-or-create "osd.${osd_id}" osd \
+     'allow *' mon 'allow profile osd' > $mountpath/keyring
+
+echo ${osd_id}         > "$mountpath/whoami"
+touch                   "$mountpath/sysvinit"
+
+ceph-osd --cluster ceph -i "${osd_id}" --mkfs
+chown -R ceph:ceph      "$mountpath"
+
+ceph osd crush add osd.${osd_id} ${WEIGHT} host=$(hostname)
+
+echo "$metadata_dev /var/lib/ceph/osd/ceph-${osd_id} xfs noatime 0 0" >> /etc/fstab
+
+/etc/init.d/ceph start osd.${osd_id}
