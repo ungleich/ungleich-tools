@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# First time we need to add host to the root
+ceph osd crush move $(hostname) root=default
