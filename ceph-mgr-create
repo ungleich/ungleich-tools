@@ -1,0 +1,20 @@
+#!/bin/sh
+
+name=$(hostname)
+
+CEPH_PATH=/var/lib/ceph
+MGR_PATH=$CEPH_PATH/mgr/ceph-$name
+
+if [ -e "$MGR_PATH" ]; then
+    echo "$MGR_PATH exists - aborting"
+    exit 1
+fi
+
+mkdir "$MGR_PATH"
+chown ceph:ceph "$MGR_PATH"
+touch "$MGR_PATH/sysvinit"
+
+ceph auth get-or-create mgr.$name \
+     mon 'allow profile mgr' \
+     osd 'allow *' \
+     mds 'allow *' > "$MGR_PATH/keyring"
