@@ -1,0 +1,9 @@
+#!/bin/sh
+
+pool=$1; shift
+
+echo "This script is not finished to create pool $pool"
+
+exit 1
+
+ceph osd pool application enable
