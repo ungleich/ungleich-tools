@@ -10,4 +10,9 @@ fi
 fname=$1
 
 ceph-authtool --create-keyring "$fname" --gen-key -n mon.
-ceph-authtool "$fname" --gen-key -n client.admin --set-uid=0 --cap mon 'allow *' --cap osd 'allow *' --cap mds 'allow'
+ceph-authtool "$fname" --gen-key -n client.admin \
+              --set-uid=0 \
+              --cap mon 'allow *' \
+              --cap osd 'allow *' \
+              --cap mgr 'allow *' \
+              --cap mds 'allow'
