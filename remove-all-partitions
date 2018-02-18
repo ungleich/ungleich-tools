@@ -1,0 +1,10 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+    echo $0 disk-to-be-deleted
+    exit 1
+fi
+
+disk=$1
+
+sgdisk -Z "$disk"
