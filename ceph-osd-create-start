@@ -20,15 +20,15 @@ magic="ceph osd volume v026"
 set -x
 set -e
 
-if [ $# -ne 3 ]; then
-    echo "$0 disk class osdweight"
+if [ $# -lt 2 ]; then
+    echo "$0 disk class [osdweight]"
     echo "class = hdd or ssd"
     exit 1
 fi
 
 export DEV=$1;shift
 export CLASS=$1; shift
-export WEIGHT=$1; shift
+
 
 uuid_metadata=$(uuidgen)
 uuid_block=$(uuidgen)
@@ -58,7 +58,6 @@ lastpart=$(gdisk -l $DEV | tail -n1 | awk '{ print $1 }')
              --mbrtogpt -- $DEV
 /sbin/udevadm settle --timeout=600
 
-
 /sbin/mkfs -t xfs -f -i size=2048 -- "$dev_metadata"
 
 mountpath=/var/lib/ceph/osd/ceph-${osd_id}
@@ -84,6 +83,13 @@ touch                   "$mountpath/sysvinit"
 
 ceph-osd --cluster ceph -i "${osd_id}" --mkfs
 chown -R ceph:ceph      "$mountpath"
+
+if [ $# -eq 1 ]; then
+    WEIGHT=$1; shift
+else
+    nodev=$(echo $dev_block | sed 's,/dev/,,')
+    WEIGHT=$(lsblk -l -b | awk "/^$nodev/ { print \$4/(1024^4) }")
+fi
 
 ceph osd crush add osd.${osd_id} ${WEIGHT} host=$(hostname)
 
