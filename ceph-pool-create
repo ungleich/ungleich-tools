@@ -1,9 +1,14 @@
 #!/bin/sh
 
-pool=$1; shift
+if [ $# -ne 2 ]; then
+    echo "$0 name pgs"
+    exit 1
+fi
 
 echo "This script is not finished to create pool $pool"
 
-exit 1
+name=$1; shift
+pg=$1;shift
 
-ceph osd pool application enable
+ceph osd pool create "$name" "$pg"
+ceph osd pool application enable "$name" rbd

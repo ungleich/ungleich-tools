@@ -15,4 +15,4 @@ ceph-authtool "$fname" --gen-key -n client.admin \
               --cap mon 'allow *' \
               --cap osd 'allow *' \
               --cap mgr 'allow *' \
-              --cap mds 'allow'
+              --cap mds 'allow *'
