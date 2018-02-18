@@ -1,0 +1,5 @@
+#!/bin/sh
+
+for disk in $(fdisk -l | grep "^Disk /dev" | sed -e 's/Disk //' -e 's/:.*//'); do
+    sgdisk -Z "$disk"
+done
