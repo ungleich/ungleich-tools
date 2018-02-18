@@ -86,7 +86,8 @@ chown -R ceph:ceph      "$mountpath"
 if [ $# -eq 1 ]; then
     WEIGHT=$1; shift
 else
-    nodev=$(echo $dev_block | sed 's,/dev/,,')
+    devname=$(readlink -f $dev_block)
+    nodev=$(echo $devname | sed 's,/dev/,,')
     WEIGHT=$(lsblk -l -b | awk "/^$nodev/ { print \$4/(1024^4) }")
 fi
 
