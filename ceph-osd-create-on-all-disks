@@ -1,0 +1,9 @@
+#!/bin/sh
+
+lsblk -b | awk '/^sd/ { print $1 " " $4/(1024^4) }' |
+(
+    while read disk size; do
+        /opt/ungleich-tools/ceph-osd-create-start /dev/$disk hdd $size
+
+    done
+)
