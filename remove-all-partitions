@@ -8,3 +8,4 @@ fi
 disk=$1
 
 sgdisk -Z "$disk"
+dd if=/dev/zero of=$disk bs=1M count=10

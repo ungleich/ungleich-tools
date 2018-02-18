@@ -1,0 +1,5 @@
+#!/bin/sh
+
+disk=$1
+
+printf 'g\nw' | fdisk $disk
