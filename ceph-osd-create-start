@@ -43,19 +43,21 @@ dev_block="/dev/disk/by-partuuid/$uuid_block"
              --typecode=0:4fbd7e29-9d25-41b8-afd0-062c0ceff05d \
              --mbrtogpt -- $DEV
 
-hdparm -z "$DEV"
+sleep 2 ; hdparm -z "$DEV"
 
 # Using gdisk --largest-new does not change the name or set guid;
 # So use 2 steps instead
 /sbin/sgdisk --largest-new=0 --mbrtogpt -- $DEV
-hdparm -z "$DEV"
+
+sleep 2 ; hdparm -z "$DEV"
 
 lastpart=$(gdisk -l $DEV | tail -n1 | awk '{ print $1 }')
 /sbin/sgdisk --change-name="${lastpart}:ceph block" \
              --partition-guid="${lastpart}:$uuid_block" \
              --typecode="${lastpart}:cafecafe-9b03-4f30-b4c6-b4b80ceff106" \
              --mbrtogpt -- $DEV
-hdparm -z "$DEV"
+sleep 2 ; hdparm -z "$DEV"
+
 
 
 /sbin/mkfs -t xfs -f -i size=2048 -- "$dev_metadata"
