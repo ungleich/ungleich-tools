@@ -12,7 +12,7 @@ for dev in $(fdisk -l | awk '$6 ~/Ceph/ { print $1 }'); do
     id=$(cat "${tmpdir}/whoami")
 
     # Chown the dev device to be accessible for ceph
-    chown ceph:ceph "${tmpdir}/block
+    chown ceph:ceph "${tmpdir}/block"
 
     umount "$dev"
 
