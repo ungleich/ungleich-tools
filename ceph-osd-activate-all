@@ -1,0 +1,20 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-20
+# Copyright ungleich glarus ag
+
+set -e
+set -x
+
+tmpdir=$(mktemp -d)
+
+for dev in $(fdisk -l | awk '$6 ~/Ceph/ { print $1 }'); do
+    mount "$dev" "$tmpdir"
+    id=$(cat "${tmpdir}/whoami")
+    umount "$dev"
+
+    dir="/var/lib/ceph/osd/ceph-$id"
+    mkdir -p "$dir"
+    mount "$dev" "$dir"
+
+    /etc/init.d/ceph start "osd.$id"
+done
