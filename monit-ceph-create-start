@@ -28,7 +28,7 @@ cat > "$conf" <<EOF
 check process ${to_monitor}-process with pidfile /var/run/ceph/${to_monitor}.pid
    start program = "/etc/init.d/ceph start ${to_monitor}" with timeout 60 seconds
    stop program  = "/etc/init.d/ceph stop ${to_monitor}"
-   depends on
+
    group ceph
    $depends
 EOF
