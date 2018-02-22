@@ -39,7 +39,7 @@ check file ${to_monitor}-whoami with path /var/lib/ceph/osd/ceph-${osdid}/whoami
  if content != "${osdid}" then alert
 EOF
 
-
+fi
 
 monit reload
 sleep 1
