@@ -10,4 +10,9 @@ fname=$1
 ceph-mon --mkfs -i $(hostname) --keyring "$fname"  --setuser ceph --setgroup ceph
 touch /var/lib/ceph/mon/ceph-$(hostname)/sysvinit
 
-/etc/init.d/ceph start mon.$(hostname)
+# Starting with monit, if available
+if [ -e /etc/monit ]; then
+    /opt/ungleich-tools/monit-ceph-create-start mon.$(hostname)
+else
+    /etc/init.d/ceph start mon.$(hostname)
+fi

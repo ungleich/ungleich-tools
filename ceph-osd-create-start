@@ -95,4 +95,9 @@ ceph osd crush add osd.${osd_id} ${WEIGHT} host=$(hostname)
 
 echo "$metadata_dev /var/lib/ceph/osd/ceph-${osd_id} xfs noatime 0 0" >> /etc/fstab
 
-/etc/init.d/ceph start osd.${osd_id}
+# Starting with monit, if available
+if [ -e /etc/monit ]; then
+    /opt/ungleich-tools/monit-ceph-create-start osd.${osd_id}
+else
+    /etc/init.d/ceph start osd.${osd_id}
+fi
