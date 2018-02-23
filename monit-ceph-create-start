@@ -15,7 +15,7 @@ set -x
 
 depends=""
 osd=""
-conf="/etc/monit/conf-enabled/$to_monitor"
+conf="/etc/monit/conf.d/$to_monitor"
 
 if echo $to_monitor | grep ^osd; then
     depends="depends on ${to_monitor}-whoami"
