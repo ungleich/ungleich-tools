@@ -1,0 +1,18 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-22
+# Copyright ungleich glarus ag
+
+if [ $# -ne 1 ]; then
+    echo "$0: toremove"
+    echo "f.i. osd.17 or mon.server4"
+    exit 1
+fi
+
+to_monitor=$1
+
+set -e
+
+conf="/etc/monit/conf.d/$to_monitor"
+
+rm -f "$conf"
+monit reload
