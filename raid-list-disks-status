@@ -1,0 +1,5 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-24
+# Copyright ungleich glarus ag
+
+megacli -PDList -aall | grep -e "^Enc" -e ^Slot -e ^Raw -e ^Firm
