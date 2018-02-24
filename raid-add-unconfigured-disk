@@ -1,0 +1,14 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-24
+# Copyright ungleich glarus ag
+
+if [ $# -ne 2 ]; then
+    echo $0: enclosure:slot controller
+    echo "f.i. $0 32:4 0
+    exit 1
+fi
+
+diskslot=$1; shift
+controller=$1; shift
+
+megacli -CfgLdAdd -r0 [$diskslot] -a${controller}
