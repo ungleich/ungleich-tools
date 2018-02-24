@@ -1,0 +1,6 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-24
+# Copyright ungleich glarus ag
+
+# Removes entries for virtual drives without physical drives
+megacli -DiscardPreservedCache -Lall -aall
