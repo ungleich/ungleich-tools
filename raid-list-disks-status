@@ -2,4 +2,4 @@
 # Nico Schottelius, 2018-02-24
 # Copyright ungleich glarus ag
 
-megacli -PDList -aall | grep -e "^Enc" -e ^Slot -e ^Raw -e ^Firm
+megacli -PDList -aall | grep -e "^Enclosure Device ID" -e "^Slot Number" -e ^Raw -e ^Firm
