@@ -22,3 +22,5 @@ for dev in $(fdisk -l | awk '$6 ~/Ceph/ { print $1 }'); do
 
     /etc/init.d/ceph start "osd.$id"
 done
+
+rmdir "$tmpdir"
