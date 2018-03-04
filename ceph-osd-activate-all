@@ -7,7 +7,7 @@ set -x
 
 tmpdir=$(mktemp -d)
 
-for dev in $(fdisk -l | awk '$6 ~/Ceph OSD/ { print $1 }'); do
+for dev in $(fdisk -l | awk '$6 ~/Ceph/ { print $1 }'); do
     mount "$dev" "$tmpdir"
     id=$(cat "${tmpdir}/whoami")
 
