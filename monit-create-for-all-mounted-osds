@@ -1,0 +1,10 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-22
+# Copyright ungleich glarus ag
+
+
+set -e
+
+for osdid in $(mount | grep /var/lib/ceph/osd/ | cut -d " " -f 3 | sed 's,/var/lib/ceph/osd/ceph-,,'); do
+    /opt/ungleich-tools/monit-ceph-create-start osd.$osdid
+done
