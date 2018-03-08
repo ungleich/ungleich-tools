@@ -19,4 +19,9 @@ ceph auth get-or-create mgr.$name \
      osd 'allow *' \
      mds 'allow *' > "$MGR_PATH/keyring"
 
-/etc/init.d/ceph start mgr.$name
+# Starting with monit, if available
+if [ -e /etc/monit ]; then
+    /opt/ungleich-tools/monit-ceph-create-start mgr.${name}
+else
+    /etc/init.d/ceph start mgr.${name}
+fi
