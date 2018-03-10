@@ -2,15 +2,17 @@
 set -e
 
 usage() {
+    progname=$(basename $0)
     cat <<eof >&2
-usage: $0 [-c CLASS] [-F] [-h] -m MODE [-d] [-v] [-w WEIGHT] device [device ...]
+usage: ${progname} [-c CLASS] [-F] [-h] -m MODE [-d] [-v] [-w WEIGHT] device
 
 positional arguments:
   device      device to create OSD on
 
 optional arguments:
   -c CLASS    device class, e.g. hdd or ssd (only used in rest_of_disk mode)
-  -F          use fullsize (only used in full_disk mode)
+  -F          use fullsize for weight (only used in full_disk mode and if
+              weight not specified), otherwise use dummy 0.1
   -h          show this help message and exit
   -m MODE     operate in specified mode: full_disk, rest_of_disk
   -d          debug mode (set -x)
@@ -18,122 +20,65 @@ optional arguments:
 eof
 }
 
-full_disk() {
-    printf "FULL DISK MODE\n"
-    printf "%s, %s, %s, %s\n" "$class" "$fullsize" "$mode" "$weight"
-    echo $@
-    return 0
-
-    DEV=$1; shift
-    ID=$(ceph osd create)
-
-    ceph-disk zap $DEV
-
-    osd_uuid=$(uuidgen)
-    ceph-disk prepare --bluestore $DEV --osd-id ${ID} --osd-uuid ${osd_uuid} --crush-device-class hdd
-
-    mkdir /var/lib/ceph/osd/ceph-${ID}
-    mount ${DEV}1 /var/lib/ceph/osd/ceph-${ID}
-    touch /var/lib/ceph/osd/ceph-${ID}/sysvinit
-    ceph auth get-or-create osd.${ID} osd 'allow *' mon 'allow profile osd' > /var/lib/ceph/osd/ceph-${ID}/keyring
-    echo ${ID} > /var/lib/ceph/osd/ceph-${ID}/whoami
-    ceph-osd --cluster ceph -i ${ID} --mkfs
-    chown -R ceph:ceph /var/lib/ceph/osd/ceph-${ID}
-
-    if [ $# -ge 1 ]; then
-        DISK_FREE_KB=$(df /dev/ada0p2 | tail -1 | awk '{print $4}')
-        SIZE=$(printf "scale=6\n${DISK_FREE_KB} / (1024 ^ 3)")
-    else
-        SIZE=0.1
-    fi
-
-    host=$(hostname)
-    ceph osd crush add osd.${ID} ${SIZE} ${host}
-
-    /etc/init.d/ceph start osd.${ID}
-}
-
-rest_of_disk() {
-    printf "REST OF DISK MODE\n"
-    printf "%s, %s, %s, %s\n" "$class" "$fullsize" "$mode" "$weight"
-    echo $@
-    return 0
-
-    # Based on ceph-disk -v prepare --bluestore /dev/sdc --osd-id ${ID} --osd-uuid $(uuidgen) --crush-device-class "ssd"
-
-    # Create:
-    # - block       -> link to partuuid
-    # - block_uuid -e> uuid if the block
-    # - ceph_fsid   -> get from ceph-conf
-    # crush_device_class -> ssd, hdd
-    # fsid          -> uuidgen!
-    # magic         -> string "ceph osd volume v026"
-    # type          -> bluestore
-
-    DEV=$1;shift
-    CLASS=$1; shift
-    WEIGHT=$1; shift
-
-    magic="ceph osd volume v026"
-    fsid=$(ceph-conf --cluster=ceph --name=osd. --lookup fsid)
-    uuid_metadata=$(uuidgen)
-    uuid_block=$(uuidgen)
-
+process() {
     osd_id=$(ceph osd create)
+    mountpath="/var/lib/ceph/osd/ceph-${osd_id}"
+    mkdir -p "${mountpath}"
 
-    dev_metadata="/dev/disk/by-partuuid/$uuid_metadata"
-    dev_block="/dev/disk/by-partuuid/$uuid_block"
+    case "${mode}" in
+    full_disk)
+        osd_uuid=$(uuidgen)
 
-    /sbin/sgdisk --new=0:0:+100M --change-name="0:ceph data" \
-                 --partition-guid="0:$uuid_metadata" \
-                 --typecode=0:4fbd7e29-9d25-41b8-afd0-062c0ceff05d \
-                 --mbrtogpt -- $DEV
+        ceph-disk zap $dev
+        ceph-disk prepare --bluestore $dev --osd-id ${osd_id} \
+            --osd-uuid ${osd_uuid} --crush-device-class hdd
+        mount "${dev}1" "${mountpath}"
+        ;;
+    rest_of_disk)
+        magic="ceph osd volume v026"
+        fsid=$(ceph-conf --cluster=ceph --name=osd. --lookup fsid)
+        uuid_metadata=$(uuidgen)
+        uuid_block=$(uuidgen)
+        dev_metadata="/dev/disk/by-partuuid/${uuid_metadata}"
+        dev_block="/dev/disk/by-partuuid/${uuid_block}"
 
-    /sbin/udevadm settle --timeout=600
+        /sbin/sgdisk --new=0:0:+100M --change-name="0:ceph data" \
+                     --partition-guid="0:$uuid_metadata" \
+                     --typecode=0:4fbd7e29-9d25-41b8-afd0-062c0ceff05d \
+                     --mbrtogpt -- $dev
+        /sbin/udevadm settle --timeout=600
+        # Using gdisk --largest-new does not change the name or set guid;
+        # So use 2 steps instead
+        /sbin/sgdisk --largest-new=0 --mbrtogpt -- $dev
+        /sbin/udevadm settle --timeout=600
+        lastpart=$(gdisk -l $dev | tail -n1 | awk '{ print $1 }')
+        /sbin/sgdisk --change-name="${lastpart}:ceph block" \
+                     --partition-guid="${lastpart}:$uuid_block" \
+                     --typecode="${lastpart}:cafecafe-9b03-4f30-b4c6-b4b80ceff106" \
+                     --mbrtogpt -- $dev
+        /sbin/udevadm settle --timeout=600
+        /sbin/mkfs -t xfs -f -i size=2048 -- "$dev_metadata"
+        mount "${dev_metadata}" "${mountpath}"
+        ln -s "${dev_block}" "${mountpath}/block"
+        echo "$uuid_block" > "$mountpath/block_uuid"
+        echo "$fsid" > "$mountpath/ceph_fsid"
+        echo "$magic" > "$mountpath/magic"
+        echo "$class" > "$mountpath/crush_device_class"
+        # Important, otherwise --mkfs later will try to create filestore
+        echo bluestore > "$mountpath/type"
+        echo "${metadata_dev} ${mountpath} xfs noatime 0 0" >> /etc/fstab
+        ;;
+    esac
 
-    # Using gdisk --largest-new does not change the name or set guid;
-    # So use 2 steps instead
-    /sbin/sgdisk --largest-new=0 --mbrtogpt -- $DEV
-    /sbin/udevadm settle --timeout=600
-
-    lastpart=$(gdisk -l $DEV | tail -n1 | awk '{ print $1 }')
-    /sbin/sgdisk --change-name="${lastpart}:ceph block" \
-                 --partition-guid="${lastpart}:$uuid_block" \
-                 --typecode="${lastpart}:cafecafe-9b03-4f30-b4c6-b4b80ceff106" \
-                 --mbrtogpt -- $DEV
-    /sbin/udevadm settle --timeout=600
-
-    /sbin/mkfs -t xfs -f -i size=2048 -- "$dev_metadata"
-
-    mountpath=/var/lib/ceph/osd/ceph-${osd_id}
-
-    mkdir -p "$mountpath"
-    mount "$dev_metadata" "$mountpath"
-
-    ln -s $dev_block        "$mountpath/block"
-
-    echo "$uuid_block"    > "$mountpath/block_uuid"
-    echo "$fsid"          > "$mountpath/ceph_fsid"
-    echo "$magic"         > "$mountpath/magic"
-    echo "$CLASS"         > "$mountpath/crush_device_class"
-
-    # Important, otherwise --mkfs later will try to create filestore
-    echo bluestore        > "$mountpath/type"
-
+    echo "${osd_id}" > "${mountpath}/whoami"
+    touch "${mountpath}/sysvinit"
     ceph auth get-or-create "osd.${osd_id}" osd \
-         'allow *' mon 'allow profile osd' > $mountpath/keyring
+         'allow *' mon 'allow profile osd' > "${mountpath}/keyring"
 
-    echo ${osd_id}         > "$mountpath/whoami"
-    touch                   "$mountpath/sysvinit"
-
-    ceph-osd --cluster ceph -i "${osd_id}" --mkfs
-    chown -R ceph:ceph      "$mountpath"
-
+    ceph-osd --cluster ceph -i ${osd_id} --mkfs
+    chown -R ceph:ceph "${mountpath}"
     host=$(hostname)
-    ceph osd crush add osd.${osd_id} ${WEIGHT} ${host}
-
-    echo "$metadata_dev /var/lib/ceph/osd/ceph-${osd_id} xfs noatime 0 0" >> /etc/fstab
-
+    ceph osd crush add osd.${osd_id} ${weight} ${host}
     /etc/init.d/ceph start osd.${osd_id}
 }
 
@@ -179,6 +124,16 @@ rest_of_disk)
     fi
     ;;
 full_disk)
+    if [ ! "${weight}" ]
+    then
+        if [ "${fullsize}" = 1 ]
+        then
+            DISK_FREE_KB=$(df /dev/ada0p2 | tail -1 | awk '{print $4}')
+            weight=$(printf "scale=6\n${DISK_FREE_KB} / (1024 ^ 3)" | bc)
+        else
+            weight=0.1
+        fi
+    fi
     ;;
 "")
     usage
@@ -192,7 +147,6 @@ full_disk)
 esac
 
 shift $(($OPTIND - 1))
-# remaining args in $@
 if [ "$#" -lt 1 ]
 then
     printf "Device is required\n" >&2
@@ -200,10 +154,12 @@ then
     exit 2
 fi
 
+dev=$1; shift
+
 if [ "${debug}" = "1" ]
 then
     set -x
 fi
 
-# call mode function
-${mode} $@
+# process device
+process
