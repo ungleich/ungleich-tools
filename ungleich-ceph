@@ -42,6 +42,13 @@ process() {
         dev_metadata="/dev/disk/by-partuuid/${uuid_metadata}"
         dev_block="/dev/disk/by-partuuid/${uuid_block}"
 
+        if [ ! "${weight}" ]
+        then
+            devname=$(readlink -f "${dev_block}")
+            nodev=$(echo "${devname}" | sed 's,/dev/,,')
+            weight=$(lsblk -l -b | awk "/^$nodev/ { print \$4/(1024^4) }")
+        fi
+
         /sbin/sgdisk --new=0:0:+100M --change-name="0:ceph data" \
                      --partition-guid="0:$uuid_metadata" \
                      --typecode=0:4fbd7e29-9d25-41b8-afd0-062c0ceff05d \
@@ -79,7 +86,13 @@ process() {
     chown -R ceph:ceph "${mountpath}"
     host=$(hostname)
     ceph osd crush add osd.${osd_id} ${weight} ${host}
-    /etc/init.d/ceph start osd.${osd_id}
+
+    # Starting with monit, if available
+    if [ -e /etc/monit ]; then
+        /opt/ungleich-tools/monit-ceph-create-start osd.${osd_id}
+    else
+        /etc/init.d/ceph start osd.${osd_id}
+    fi
 }
 
 # parse args
@@ -113,12 +126,6 @@ rest_of_disk)
     if [ ! "${class}" ]
     then
         printf "Class is required in 'rest_of_disk' mode\n" >&2
-        usage
-        exit 2
-    fi
-    if [ ! "${weight}" ]
-    then
-        printf "Weight is required in 'rest_of_disk' mode\n" >&2
         usage
         exit 2
     fi
