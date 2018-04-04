@@ -1,0 +1,36 @@
+#!/bin/sh
+# Nico Schottelius, 2018-02-20
+# Copyright ungleich glarus ag
+
+set -e
+set -x
+
+tmpdir=$(mktemp -d)
+
+if [ $# -lt 1 ]; then
+    echo "$0 disk (i.e. /dev/sdk)"
+    exit 1
+fi
+
+wholedev=$1
+dev=${wholedev}1
+
+mount "$dev" "$tmpdir"
+id=$(cat "${tmpdir}/whoami")
+
+# Chown the dev device to be accessible for ceph
+chown ceph:ceph "${tmpdir}/block"
+
+umount "$dev"
+
+dir="/var/lib/ceph/osd/ceph-$id"
+mkdir -p "$dir"
+mount "$dev" "$dir"
+
+if [ -e /etc/monit ]; then
+    /opt/ungleich-tools/monit-ceph-create-start "osd.$id"
+else
+    /etc/init.d/ceph start "osd.$id"
+fi
+
+rmdir "$tmpdir"
