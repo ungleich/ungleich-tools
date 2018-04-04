@@ -20,7 +20,11 @@ for dev in $(fdisk -l | awk '$6 ~/Ceph/ { print $1 }'); do
     mkdir -p "$dir"
     mount "$dev" "$dir"
 
-    /etc/init.d/ceph start "osd.$id"
+    if [ -e /etc/monit ]; then
+        /opt/ungleich-tools/monit-ceph-create-start
+    else
+        /etc/init.d/ceph start "osd.$id"
+    fi
 done
 
 rmdir "$tmpdir"
