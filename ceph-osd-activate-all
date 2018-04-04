@@ -21,7 +21,7 @@ for dev in $(fdisk -l | awk '$6 ~/Ceph/ { print $1 }'); do
     mount "$dev" "$dir"
 
     if [ -e /etc/monit ]; then
-        /opt/ungleich-tools/monit-ceph-create-start
+        /opt/ungleich-tools/monit-ceph-create-start "osd.$id"
     else
         /etc/init.d/ceph start "osd.$id"
     fi
