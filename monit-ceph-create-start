@@ -41,6 +41,7 @@ EOF
 
 fi
 
-monit reload
+/etc/init.d/monit restart
+# monit reload
 sleep 1
 monit start "${to_monitor}"
