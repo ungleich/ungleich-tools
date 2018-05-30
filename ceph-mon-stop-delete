@@ -15,3 +15,5 @@ else
 fi
 
 ceph mon remove "${mon}"
+
+rm -rf /var/lib/ceph/mon/ceph-$(hostname)/
