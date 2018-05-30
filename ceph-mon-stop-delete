@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if [ $# -ne 0 ]; then
+    echo "$0 (no arguments"
+    exit 1
+fi
+
+mon=mon.$(hostname)
+
+# Starting with monit, if available
+if [ -e /etc/monit ]; then
+    /opt/ungleich-tools/monit-remove "$mon"
+else
+    /etc/init.d/ceph stop "$mon"
+fi
+
+ceph mon remove "${mon}"

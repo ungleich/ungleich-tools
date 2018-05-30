@@ -10,9 +10,11 @@ fi
 
 to_monitor=$1
 
-set -e
-
 conf="/etc/monit/conf.d/$to_monitor"
 
+
+monit stop "$to_monitor"
+sleep 1
+
 rm -f "$conf"
-monit reload
+/etc/init.d/monit restart
