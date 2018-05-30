@@ -14,6 +14,6 @@ else
     /etc/init.d/ceph stop "$mon"
 fi
 
-ceph mon remove "${mon}"
+ceph mon remove "$(hostname)"
 
 rm -rf /var/lib/ceph/mon/ceph-$(hostname)/
