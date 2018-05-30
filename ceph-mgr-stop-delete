@@ -1,0 +1,17 @@
+#!/bin/sh
+
+if [ $# -ne 0 ]; then
+    echo "$0 (no arguments"
+    exit 1
+fi
+
+svc=mgr.$(hostname)
+
+# Starting with monit, if available
+if [ -e /etc/monit ]; then
+    /opt/ungleich-tools/monit-remove "$svc"
+else
+    /etc/init.d/ceph stop "$svc"
+fi
+
+rm -rf /var/lib/ceph/mgr/ceph-$(hostname)/
