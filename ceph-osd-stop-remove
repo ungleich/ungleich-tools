@@ -26,6 +26,9 @@ fi
 ceph osd crush remove $osd_name
 ceph osd rm $osd_name
 
+echo "Mount path before umounting: "
+mount | grep "$mountpath"
+
 # Sleep 5 to wait for monit to kill it
 sleep 5
 umount "$mountpath"
