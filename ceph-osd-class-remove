@@ -1,9 +1,0 @@
-#!/bin/sh
-
-if [ $# -lt 1 ]; then
-    echo "$0: osd-name osd-name ..." >&2
-    echo "Removes associated device classes"
-    exit 1
-fi
-
-ceph osd crush rm-device-class "$@"

@@ -1,0 +1,12 @@
+#!/bin/sh
+
+if [ $# -ne 2 ]; then
+    echo "$0: class-name osd-name" >&2
+    echo "Set device class for OSD (needs to be classless before)"
+    exit 1
+fi
+
+osd=$1; shift
+class=$1; shift
+
+ceph osd crush set-device-class "$class" "$osd"
