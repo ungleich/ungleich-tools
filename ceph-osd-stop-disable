@@ -24,7 +24,7 @@ else
 fi
 
 echo "Waiting for monit/ceph script to stop OSD"
-sleep 2
+sleep 5
 
 umount "$mountpath"
 
