@@ -1,0 +1,32 @@
+#!/bin/sh
+# 17:19, 2018-02-09
+# Nico Schottelius
+
+set -x
+set -e
+
+if [ $# -ne 1 ]; then
+    echo "$0 osd.id"
+    echo "i.e. $0 17"
+    exit 1
+fi
+
+osd_id=$1; shift
+osd_name=osd.${osd_id}
+mountpath=/var/lib/ceph/osd/ceph-${osd_id}
+
+# Remove monit job
+if [ -e /etc/monit ]; then
+    monit stop $osd_name
+    /opt/ungleich-tools/monit-remove $osd_name
+else
+    /etc/init.d/ceph stop $osd_name
+fi
+
+echo "Waiting for monit/ceph script to stop OSD"
+sleep 2
+
+umount "$mountpath"
+
+echo 'If you remove the disk, update the megacli configuration!'
+echo 'i.e. discard cache probably (to be verified)'
