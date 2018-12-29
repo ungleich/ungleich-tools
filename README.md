@@ -19,5 +19,9 @@ team ungleich
 
 p.s.: Some stuff that you (will) find in this repo:
 
-- Tools to manage ceph cluster(s)
-- Tools to manage opennebula cluster(s)
+Tools to manage ...
+
+- ceph cluster(s)
+- opennebula cluster(s)
+- host disk/raid configurations
+- monit
